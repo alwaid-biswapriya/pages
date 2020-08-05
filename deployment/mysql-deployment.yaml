@@ -1,51 +1,52 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: pages
-    servicefor: pages
-  name: pages
+  name: mysql
   namespace: biswapriya
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: pages
-      servicefor: pages
-  strategy: {}
+      app: mysql
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
-        app: pages
-        servicefor: pages
+        app: mysql
     spec:
-      volumes:
-        - name: log-volume
-          persistentVolumeClaim:
-            claimName: log-persistent-claim
       containers:
-        - image: biswapriya/pages:persist
-          imagePullPolicy: Always
-          name: pages
-          ports:
-            - containerPort: 8080
+        - image: mysql:8.0
+          name: mysql
           env:
-            - name: PAGE_CONTENT
+            # Instead of using value directly we could also use secrets
+            - name: MYSQL_ROOT_PASSWORD
               valueFrom:
-                configMapKeyRef:
-                  name: pages-config-map
-                  key: PAGE_CONTENT
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-pass
+          ports:
+            - containerPort: 3306
+              name: mysql
           volumeMounts:
-            - name: log-volume
-              mountPath: "/var/tmp/"
-          readinessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 15
-          livenessProbe:
-            httpGet:
-              path: /actuator/health
-              port: 8080
-            initialDelaySeconds: 15
-          resources: {}
-status: {}
+            - name: mysql-storage
+              mountPath: "/var/lib/mysql"
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-volume-claim-biswapriya
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: biswapriya
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+  #kubectl run -it --rm --image=mysql:8.0 --restart=Never mysql-client -- mysql -h mysql -ppassword
+  #sudo ln -s /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
+  #sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
