@@ -1,49 +1,51 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql
+  labels:
+    app: pages
+    servicefor: pages
+  name: pages
   namespace: biswapriya
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mysql
-  strategy:
-    type: Recreate
+      app: pages
+      servicefor: pages
+  strategy: {}
   template:
     metadata:
       labels:
-        app: mysql
+        app: pages
+        servicefor: pages
     spec:
-      containers:
-        - image: mysql:8.0
-          name: mysql
-          env:
-            # Instead of using value directly we could also use secrets
-           - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: mysql-pass
-          ports:
-            - containerPort: 3306
-              name: mysql
-          volumeMounts:
-            - name: mysql-storage
-              mountPath: "/var/lib/mysql-biswapriya"
       volumes:
-        - name: mysql-storage
+        - name: log-volume
           persistentVolumeClaim:
-            claimName: mysql-volume-claim-biswapriya
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql
-   namespace: biswapriya
-spec:
-  ports:
-    - port: 3306
-  selector:
-    app: mysql
-  clusterIP: None
+            claimName: log-persistent-claim
+      containers:
+        - image: biswapriya/pages:persist
+          imagePullPolicy: Always
+          name: pages
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PAGE_CONTENT
+              valueFrom:
+                configMapKeyRef:
+                  name: pages-config-map
+                  key: PAGE_CONTENT
+          volumeMounts:
+            - name: log-volume
+              mountPath: "/var/tmp/"
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 15
+          resources: {}
+status: {}
