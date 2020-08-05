@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-volume-biswapriya
+  namespace: biswapriya
+  labels:
+    type: local
+spec:
+  storageClassName: mysql-biswapriya
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data-biswapriya"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-volume-claim-biswapriya
+  namespace: biswapriya
+spec:
+  storageClassName: mysql-biswapriya
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+            storage: 1Gi
